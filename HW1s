@@ -1,0 +1,63 @@
+<!--kashyap soni -->
+<!--09/22/2017-->
+<!--Compiling Calculator and Calculator.Test-->
+<project default = "run">
+
+    <!--writing properties-->
+    <property name ="src" location="src"/>
+    <property name ="bin" location="bin"/>
+    <property environment = "env"/>
+
+    <target name="clean">
+        <delete dir="bin"/>
+        <delete dir="test/bin"/>
+    </target>
+
+    <target name="create" depends="clean">
+        <mkdir dir="bin"/>
+        <mkdir dir="test/bin"/>
+    </target>
+
+    <!--compiling .java file-->
+    <target name="compile" depends="create">
+        <javac srcdir="src" includeantruntime="true" destdir="bin">
+        </javac>
+    </target>
+
+
+    <!--compiling .tesst file-->
+    <target name="compiletest" depends="create,compile">
+        <javac srcdir="test/src" includeantruntime="true" destdir="test/bin">
+
+            <classpath>
+           <pathelement path="$@{classpath}"/>
+            <pathelement location="bin"/>
+            <pathelement path="$@{classpath}"/>
+            <pathelement location ="${env.JUNIT}"/>
+            <pathelement path="$@{classpath}"/>
+            <pathelement location="${env.HAMCREST_CORE}"/>
+        </classpath>
+        </javac>
+    </target>
+
+    <!--JUNIT-->
+    <target name = "run" depends="compiletest,compile">
+        <junit printsummary = "yes" showoutput = "yes" fork="true" >
+        <formatter type="plain" usefile="false"/>
+            <classpath>
+                <pathelement path="@{classpath}"/>
+                <pathelement location="bin"/>
+
+                <pathelement path="@{classpath}"/>
+                <pathelement location="test/bin"/>
+
+                <pathelement path="$@{classpath}"/>
+                <pathelement location ="${env.JUNIT}"/>
+                <pathelement path="$@{classpath}"/>
+                <pathelement location="${env.HAMCREST_CORE}"/>
+            </classpath>
+            <test name = "edu.umb.cs.cs410.hw01.CalculatorTest"/>
+        </junit>
+
+    </target>
+</project>
