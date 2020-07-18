@@ -1,0 +1,102 @@
+#|
+    ===> PLEASE DO NOT DISTRIBUTE THE SOLUTIONS PUBLICLY <===
+
+   We ask that solutions be distributed only locally -- on paper, on a
+   password-protected webpage, etc.
+
+   Students are required to adhere to the University Policy on Academic
+   Standards and Cheating, to the University Statement on Plagiarism and the
+   Documentation of Written Work, and to the Code of Student Conduct as
+   delineated in the catalog of Undergraduate Programs. The Code is available
+   online at: http://www.umb.edu/life_on_campus/policies/code/
+
+|#
+;; PLEASE DO NOT CHANGE THE FOLLOWING LINES
+#lang racket
+(require "hw5-util.rkt")
+(require rackunit)
+(provide d:eval-exp d:eval-term)
+(define (d:apply-arg1 app)
+  (first (d:apply-args app)))
+(define (d:lambda-param1 lam) 
+  (first (d:lambda-params lam)))
+;; END OF REQUIRES
+
+;; Exercise 1
+(define/contract (d:eval-exp mem env exp)  
+  (-> mem? handle? d:expression? eff?)
+  ;(display exp)
+  ;(display (eff env exp))
+  ;(display (eff mem exp))
+
+  (cond
+    [(d:number? exp) (eff mem exp)]
+    [(d:variable? exp) 
+     'todo
+     ]
+         ;(cond [(hash-has-key? env exp) (hash-ref env exp)]
+          ;     [else (error "Variable not defined")] )]
+    [(d:lambda? exp) (eff env (d:closure env exp))]
+    [(d:apply? exp)
+     (define ef (d:eval-exp mem env (d:apply-func exp)))
+     (define ea (d:eval-exp mem env (d:apply-arg1 exp)))
+     
+     
+     (define vb (d:eval-exp mem (hash-set (d:closure-env ef)
+                                  (d:lambda-param1 (d:closure-decl ef))
+                                  ea)
+                        (d:lambda-body (d:closure-decl ef))))        
+     vb]
+    [else error" Unkown Expression "] ))
+
+(define (eval-exp? exp expected)
+  (define frm (parse-frame '[]))
+  (define mem (heap-put root-mem root-environ frm))
+  (check-equal?
+    (d:quote1
+      (eff-result (d:eval-exp mem root-environ (d:parse1 exp))))
+    expected))
+
+;(define ax (d:parse1 '((lambda (x) x) 3) ) )
+;(display ax)
+;(eval-exp? 1 1)
+;(eval-exp? '(lambda (x) 3) '(lambda (x) 3))
+;(eval-exp? '((lambda (x) x) 3)  3)
+;(eval-exp? '((((lambda (x) (lambda (y) (lambda (z) x))) 1) 2) 3) 1)
+
+
+(define (eval-exp*? mem env exp expected-val expected-mem)
+  (define given-mem (parse-mem mem))
+  (define r (d:eval-exp given-mem (parse-handle env) (d:parse1 exp)))
+  (check-equal? (d:quote1 (eff-result r)) expected-val)
+  (check-equal? (quote-mem (eff-state r)) expected-mem))
+;(eval-exp*?
+  ; Input memory
+;  '[(E0 . [(x . 1)])]
+  ; Environment
+;  'E0
+  ; Input expression
+;  'x
+  ; Output value
+;  1
+  ; Output memory
+;  '[(E0 . [(x . 1)])])
+
+;; Exercise 2
+(define/contract (d:eval-term mem env term)
+  (-> mem? handle? d:term? eff?)
+  (cond
+    [(d:number? exp) exp]
+    [(d:variable? exp)
+         (cond [(hash-has-key? env exp) (hash-ref env exp)]
+               [else (error "Variable not defined")] )]
+    [(d:lambda? exp) (d:closure env exp)]
+    [(d:term? exp) 'todo ]
+    {(d:apply? exp) 'todo }
+    [else error" Unkown Expression "] ))
+
+;; Exercise 3 (Manually graded)
+#|
+PLEASE REPLACE THIS TEXT BY YOUR ANSWER.
+YOU MAY USE MULTIPLE LINES.
+|#

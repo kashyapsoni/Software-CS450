@@ -1,0 +1,136 @@
+#lang racket
+#|
+    ===> PLEASE DO NOT DISTRIBUTE THE SOLUTIONS PUBLICLY <===
+
+   We ask that solutions be distributed only locally -- on paper, on a
+   password-protected webpage, etc.
+
+   Students are required to adhere to the University Policy on Academic
+   Standards and Cheating, to the University Statement on Plagiarism and the
+   Documentation of Written Work, and to the Code of Student Conduct as
+   delineated in the catalog of Undergraduate Programs. The Code is available
+   online at:
+
+   https://www.umb.edu/life_on_campus/dean_of_students/student_conduct
+
+|#
+(require racket/set)
+(require rackunit)
+(require "hw6-util.rkt")
+(provide frame-refs mem-mark mem-sweep mlist mapply)
+
+;1 mdd 52000
+;2 mdd 520D9
+
+;;;;;;;;;;;;;;;
+;; Exercise 1
+
+(define/contract (frame-refs frm)
+  (-> frame? set?)
+  (define parent-frm (frame-parent frm))
+  (define pair-values (frame-values frm))
+  (define (frame-fold1 frm)
+   (cond
+    [(empty? frm) frm] 
+    [(d:closure? (first frm)) (cons (d:closure-env (first frm)) (frame-fold1 (rest frm)))]
+    [else (frame-fold1 (rest frm))]))
+  (define child-set (frame-fold1 pair-values))
+  (define (get-refs parent-Env child-Env)
+   (cond
+     [(and
+       (false? parent-Env)
+       (empty? child-Env)) (set)]
+     [(false? parent-Env) (list->set child-Env)]
+     [(empty? child-Env) (set parent-Env)]
+     [else (set-union (set parent-Env) (list->set child-Env))]))
+  (define return (get-refs parent-frm child-set))
+  return)
+
+;;;;;;;;;;;;;;;
+;; Exercise 2
+
+(define/contract (mem-mark contained mem env)
+  (-> (-> any/c set?) heap? handle? set?)
+  (define (getframe env) (heap-get mem env))
+  (define handles (contained (getframe env)))
+  (define setlist (set->list handles))
+  (define (frame-fold2 list)
+   (cond
+   [(empty? list) (set env)]
+   [else (set-union
+          (contained (getframe (first list)))
+          (frame-fold2 (rest list)))]))
+  (define return (frame-fold2 setlist))
+  ;; the return return all the places
+  ;; now use this places recursively until u get empty(get to the parent ))
+  (set-union handles return)
+  )
+
+(define m2
+  (parse-mem
+    '[(E0 . [(f . (closure E0 (lambda (x) (lambda (y) x))))])
+      (E1 . [E0 (x . 2)])
+      (E2 . [E1 (x . 10)])
+      (E3 . [E3 (a . 5) (b . (closure E0 (lambda (x) (lambda (y) x)))) (c . (closure E1 (lambda (x) (lambda (y) x))))])
+      (E4 . [E3 (x . (closure E0 (lambda (x) x))) (y . 10) (z . (closure E1 (lambda (z) z)))])]))
+
+;;;;;;;;;;;;;;;
+;; Exercise 3
+
+(define/contract (mem-sweep mem to-keep)
+  (-> heap? set? heap?)
+ ; (heap-filter (lambda (r frm) (even? (handle-id r))) m6)
+  (heap-filter (lambda (r frm) (set-member? to-keep r)) mem)
+ )
+
+
+;;;;;;;;;;;;;;;
+;; Exercise 4
+
+(define (mlist bind pure args)
+
+  (define (each res accum)
+    (cond
+      [(empty? res) (pure (reverse accum))]
+      [else
+      (bind (first res)
+             (lambda (r)
+             (each (rest res) (cons r accum))))])
+    )
+  (each args empty)
+  ;(pure (list 1 2 3))
+  )
+
+;;;;;;;;;;;
+;; do it without bind and then put it in bind 
+;;;;;;;;;;;
+
+;hw7 util
+
+(check-equal?
+  (eff-run
+    (mlist eff-bind eff-pure (list (eff-pure 1) (eff-pure 2) (eff-pure 3)))
+    (list))
+  (eff (list) (list 1 2 3)))
+
+
+;;;;;;;;;;;;;;;
+;; Exercise 5
+
+(define (mapply bind pure f . args)
+  (bind (mlist bind pure args)
+        (lambda (r)
+         (pure (apply f r)))))
+
+
+;;;;;;;;;;;;;;;
+;; Exercise 6 (MANUALLY GRADED)
+#|
+
+This fault in refefrence count, will affect soundeness of memory management.
+As we only reclaim unneeded data, but due the fault in reference count, we will
+have wrong data which is claimed which could be needed in the program.
+And if we have wrong data the soundness od the memory will be effected. And
+as we know it could rise crashes and security breaches.
+
+|#

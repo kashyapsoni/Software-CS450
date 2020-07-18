@@ -1,0 +1,139 @@
+#lang racket
+#|
+            #####################################################
+            ###  PLEASE DO NOT DISTRIBUTE SOLUTIONS PUBLICLY  ###
+            #####################################################
+
+  Copy your solution of HW1 as file "hw1.rkt". The file should be in the same
+  directory as "hw2.rkt" and "ast.rkt".
+|#
+(require "ast.rkt")
+(require "hw1.rkt")
+(require rackunit)
+(provide (all-defined-out))
+;; ^^^^^ DO NOT CHANGE ANY CODE ABOVE THIS LINE ^^^^^
+
+
+;; Exercise 1.a: Read-write cell
+;; Solution has 3 lines.
+(define (rw-cell x)
+ (lambda (c)
+  (cond [(empty? c) x]
+        [else (rw-cell  (car c))])
+   )
+  )
+
+;; Exercise 1.b: Read-only cell
+;; Solution has 4 lines.
+(define (ro-cell x)
+  (lambda (c)
+  (cond [(empty? c) x]
+        [else (ro-cell x)])
+    )
+  )
+
+;; Exercise 2: Interperse
+;; Solution has 11 lines.
+(define (intersperse l v)
+  (define (inter-iter accum l)
+    (cond [(empty? l) (accum l)]
+          [(= (length l) 1) (accum l)]
+          [else
+           (define hd (first l))
+           (define tl (rest l))
+           (inter-iter
+               (lambda (x) (accum (cons hd (cons v x)))) tl)]))
+  (inter-iter (lambda (x) x) l) )
+
+;(cond [(empty? l) l]
+;          [(= (length l) 1) l]
+;          [else (cons (first l)(cons v (intersperse (rest l) v)))] ))
+
+;; Exercise 3.a: Generic find
+;; Solution has 7 lines.
+(define (find pred l)
+   (define (finding indx elem)
+     (cond [(empty? elem) #f]
+           [(equal? (pred indx (first elem)) #t) (cons indx (first elem))]
+           [else (finding (+ 1 indx) (rest elem))]
+     )
+   )
+  (finding 0 l)
+  )
+
+;; Exercise 3.b: Member using find
+;; Solution has 3 lines.
+(define (member x l)
+  (cond [(pair? (find (lambda (indx elem) (equal? x elem)) l)) #t]
+        [else #f]
+  ))
+
+;; Exercise 3.c: index-of using find
+;; Solution has 4 lines.
+(define (index-of l x)
+ (cond [(pair? (find (lambda (indx elem) (equal? x elem)) l))
+        (car (find (lambda (indx elem) (equal? x elem)) l))]
+        [else #f]
+  ))
+
+;; Exercise 4: uncurry, tail-recursive
+;; Solution has 8 liners.
+(define (uncurry f)
+  (define (l accum c)
+    (display "c\n")
+    (cond
+          (display "c\n")
+
+    [(empty? c)     (display "c\n")
+(accum (f))]
+    [else
+         (display "c\n")
+
+     (l (lambda (y) ( (first c) y)) (rest c))
+     ]
+    )) l (lambda (x) x)  )
+
+(check-equal? 2 ((uncurry (curry + 1 1)) (list)))
+(check-equal? 1 ((uncurry (lambda (x) (lambda (y) (- x y)))) (list 5 4)))
+; (((((curry f) 1) 2) 3) 4)
+;10
+;> ((((curry f 1) 2) 3) 4)
+;10
+;(curry f 1 2 3 4)
+;10
+ 
+
+;; function to save function 
+(define (recur f l)
+  (define (map-iter accum l)
+  (cond [(empty? l) (accum l)]
+        [else (map-iter (lambda (x) (accum (cons (f (first l)) x))) (rest l))]))
+    (map-iter (lambda (x) x) l)
+  )
+
+;; Exercise 5: Parse a quoted AST
+;; Solution has 26 lines.
+(define (parse-ast node)
+  (define (make-define-func node)
+    (r:define (parse-ast (first (second node)))
+     (r:lambda (recur parse-ast (rest (second node)))
+               (recur parse-ast (rest (rest node))))
+     ))
+  (define (make-define-basic node)
+    (r:define (parse-ast (second node))
+              (cond [(= (length (rest (rest node))) 1) (parse-ast (third node)) ]
+                    [else (r:lambda (recur parse-ast (second (third node)))
+                                    (recur parse-ast (rest (rest (third node))))) ])
+              ))
+  (define (make-lambda node) (r:lambda (recur parse-ast (second node)) (recur parse-ast (rest (rest node)))))
+  (define (make-apply node) (r:apply (parse-ast (first node)) (recur parse-ast (rest node))))    
+  (define (make-number node) (r:number node))
+  (define (make-variable node) (r:variable node))
+  
+  (cond
+    [(define-basic? node) (make-define-basic node)]
+    [(define-func? node) (make-define-func node)]
+    [(symbol? node) (make-variable node)]
+    [(real? node) (make-number node)]
+    [(lambda? node) (make-lambda node)]
+    [else (make-apply node)]))

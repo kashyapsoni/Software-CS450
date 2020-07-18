@@ -1,0 +1,216 @@
+#lang racket
+#|
+    ===> PLEASE DO NOT DISTRIBUTE SOLUTIONS NOR TESTS PUBLICLY <===
+
+   We ask that solutions be distributed only locally -- on paper, on a
+   password-protected webpage, etc.
+
+   Students are required to adhere to the University Policy on Academic
+   Standards and Cheating, to the University Statement on Plagiarism and the
+   Documentation of Written Work, and to the Code of Student Conduct as
+   delineated in the catalog of Undergraduate Programs. The Code is available
+   online at: http://www.umb.edu/life_on_campus/policies/code/
+
+|#
+(require rackunit)
+(require "ast.rkt")
+(provide (all-defined-out))
+
+
+;; Exercise 1.a
+(define p:empty (delay '()))
+
+;; Exercise 1.b
+(define (p:empty? p)
+  (cond [(equal? (force p) (force p:empty)) #t]
+        [(equal? (force (delay p)) (force p:empty) ) #t]
+        [else #f]
+    ))
+
+
+;; Exercise 1.c
+;; Possible to implement (p:cons x l)
+#| Answer below
+
+ yes, as the implement below shows, when
+ given two arguments x and l, we can construct
+ such a function where given x will be cons to
+ the tail l with delay.
+
+ As the test case shows a promise of the list
+ 1, 2 and (delay 1), (delay 2) will be delayed
+ first and will be cons together and all of that
+ will be delayed. 
+
+
+(define (p:cons x l)
+  (delay (cons x (delay (cons l p:empty))))
+  )
+
+;test case;
+(p:cons 1 2)
+(p:cons (delay 1) (delay 2))
+
+|#
+
+
+;; Exercise 1.d
+(define (p:first l) (car (force l)))
+
+;; Exercise 1.e
+(define (p:rest l) (cdr (force l)))
+
+;; Exercise 1.f
+(define (p:append l1 l2)
+    (cond [(p:empty? l1) l2]
+          [else (delay (cons (p:first l1)
+                (p:append (p:rest l1) l2)))]))
+  
+
+;; Exercise 2.a
+;; Auxiliary functions
+;(define (tree-l self) (first (force self)))
+(define (tree-left self) (p:first self))
+(define (tree-value self) (p:first (p:rest self)))
+(define (tree-right self) (p:first (p:rest (p:rest self))))
+#|
+(define (bst->list self)
+  (cond [(empty? self) self]
+        [else
+         (append
+           (bst->list (tree-left self))
+           (cons (tree-value self)
+                 (bst->list (tree-right self))))]))
+|#
+
+(define (bst->p:list self)
+  (cond [(p:empty? self) p:empty]
+        [else
+         (p:append
+          (bst->p:list (tree-left self))
+          (delay (cons (tree-value self)
+                 (bst->p:list (tree-right self)))))]))
+
+
+;; Exercise 2.b
+;; Example of lazy evaluation outperforms eager evaluation.
+#|
+If we take append and p:append as our example and evaluate it,
+then we can see that lazy evaluation outperforms eager, due
+to the delayed of the arguments, weather the argument passed in
+else condition is a real or funciton which does something will
+be delayed untill we call it. Which helps the function more as
+it will evaluate one thing at a time and not like eager evaluation
+which evaluates everything first before the body function.
+
+(define (append l1 l2)
+    (cond [(empty? l1) l2]
+          [else (cons (first l1)
+                      (p:append (rest l1) l2)))]))
+
+So, in append we can see the eager evaluation as it will
+evaluate the arguments in else condition the
+(first l1) which is a first element in the list and that
+is evaluated before and then we cons that with the rest,
+and in p:append the argument is not evaluated until you
+force it, which will just be delayed untill called and
+it will remain delayed which is faster then eager,
+because we would want to call the value only when
+we run the program or when we want to, and not evaluate
+it always when we run the program.
+
+(define (p:append l1 l2)
+    (cond [(p:empty? l1) l2]
+          [else (delay (cons (p:first l1)
+                      (p:append (p:rest l1) l2)))]))
+
+Also, the Lazy evaluation will only evaluate one argument
+at a time, and this outperfomrs the eager evaluation which
+evaluates all the argument first which takes most of the time.
+
+|#
+
+
+;; Exercise 3
+;; Auxiliary functions
+(define (stream-get stream) (car stream))
+(define (stream-next stream) ((cdr stream)))
+
+(define (stream-foldl f a s)
+    (cond [(empty? s) a]
+          [else
+          ; (display a)
+           ;(display s)
+           (f a
+              (thunk (stream-foldl f (f (stream-get s) a) (stream-next s)))
+              )]))
+
+;(define ex121 (thunk
+;(cons 1 (thunk (cons 2 (thunk (cons 4 (thunk (cons 5 '())))))))))
+
+
+;; Exercise 4
+(define (stream-skip n s)
+  (define (skip-iter incr s)
+ (cond [(equal? incr n) s]
+       [else (skip-iter (+ 1 incr) (stream-next s))
+        ]))
+    (skip-iter 0 s))
+
+
+(struct r:bool (value) #:transparent)
+
+;; Exercise 5
+(define (r:eval-builtin sym)
+  (cond [(equal? sym '+) +]
+        [(equal? sym '*) *]
+        [(equal? sym '-) -]
+        [(equal? sym '/) /]
+        [(equal? sym '#t) #t]
+        [(equal? sym '#f) #f]
+        [(equal? sym 'and) 'and]
+        [else #f]))
+
+(define (r:eval-exp exp)
+  (cond
+ ;   [(r:and? exp) ()]
+    [(r:bool? exp) (r:bool-value exp)]
+    ; 1. When evaluating a number, just return that number
+    [(r:number? exp) (r:number-value exp)]
+    ; 2. When evaluating an arithmetic symbol,
+    ;    return the respective arithmetic function
+    [(r:variable? exp) (r:eval-builtin (r:variable-name exp))]
+    ; 3. When evaluating a function call evaluate each expression and apply
+    ;    the first expression to remaining ones
+    ; if the function is and work in and condition.
+    ; if the function is '+ work in '+ condition.
+    [(r:apply? exp)
+      (cond
+        [(equal? (r:eval-exp (r:apply-func exp)) (r:eval-exp (r:variable 'and)))
+         (cond
+        [(empty? (r:apply-args exp)) #t]
+        [(equal? (length (r:apply-args exp)) 1)
+         (cond
+           [(equal? #f (r:eval-exp (first (r:apply-args exp)))) #f]
+           [else (r:eval-exp (first (r:apply-args exp))) ])]        
+        [else
+         (cond
+           [(equal? #f (r:eval-exp (first (r:apply-args exp)))) #f]
+           [else (r:eval-exp (r:apply (r:apply-func exp) (rest (r:apply-args exp))))]
+           )
+         ])]
+        
+        [(equal? (r:eval-exp (r:apply-func exp)) (r:eval-exp (r:variable '+)))
+         (cond   
+        [(empty? (r:apply-args exp)) 0]
+        [(equal? (length (r:apply-args exp)) 1) (r:eval-exp (first (r:apply-args exp)))]           
+        [else
+        ((r:eval-exp (r:apply-func exp))
+         (r:eval-exp (first (r:apply-args exp)))
+         (r:eval-exp (r:apply (r:apply-func exp) (rest (r:apply-args exp)))))        
+         ])]
+        )]
+    [else (error "Unknown expression:" exp)]))
+
+
+

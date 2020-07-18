@@ -1,0 +1,107 @@
+#lang racket
+#|
+    ===> PLEASE DO NOT DISTRIBUTE THE SOLUTIONS PUBLICLY <===
+
+   We ask that solutions be distributed only locally -- on paper, on a
+   password-protected webpage, etc.
+
+   Students are required to adhere to the University Policy on Academic
+   Standards and Cheating, to the University Statement on Plagiarism and the
+   Documentation of Written Work, and to the Code of Student Conduct as
+   delineated in the catalog of Undergraduate Programs. The Code is available
+   online at:
+
+   https://www.umb.edu/life_on_campus/dean_of_students/student_conduct
+
+|#
+(require "hw7-util.rkt")
+(require rackunit)
+(provide (all-defined-out))
+
+(define/contract (env-put env var val)
+  (-> handle? d:variable? d:value? eff-op?)
+  (eff-op (lambda (mem)
+     (eff (environ-put mem env var val) (d:void)))))
+ 
+(define/contract (env-push env var val)
+  (-> handle? d:variable? d:value? eff-op?)
+  (eff-op (lambda (mem)
+    (environ-push mem env var val))))
+  
+(define/contract (env-get env var)
+  (-> handle? d:variable? eff-op?)
+  (eff-op (lambda (mem)
+    (eff mem (environ-get mem env var)))))
+
+(define/contract (d:eval-exp env exp)
+  (-> handle? d:expression? eff-op?)
+  (eff-op
+   (match exp
+    [(d:number a) a]
+    [(d:variable x) (do (env-get env x))]
+    ;[(d:lambda? param (list body rest ...))
+    ; (eff mem (d:closure param (list body rest ...)))]
+    [(d:apply ef (list ea1 ea2)) 
+     (do
+       vf <- (d:eval-exp env ef)
+       va <- (d:eval-exp env ea1)
+       Eb <- (env-push (d:closure-env vf)
+                       (first (d:lambda-params (d:closure-decl vf)))
+                       va) ; lecture 27
+       vb <- ((d:eval-term-impl) Eb (d:lambda-body (d:closure-decl vf)))
+       (eff-pure vb))]
+     [_ (error "Unknown expression:" exp)]
+    )
+  ))
+
+#|
+(eval-exp? '((lambda (x) x) 3)  3)
+(eval-exp? '((((lambda (x) (lambda (y) (lambda (z) x))) 1) 2) 3) 1)
+|#
+
+
+(define/contract (d:eval-term env term)
+  (-> handle? d:term? eff-op?)
+  #|(eff-op
+   (match term
+     [(d:define? x _)
+      (do
+        val <- (d:eval-term env rest ...)
+        var <- x
+        E <- (env-put env var val)
+        E
+        ;(eff E (d:void))
+        )]
+     [(d:seq? t1 t2)
+      (do
+        v1 <- (d:eval-term env t1)
+        v2 <- (d:eval-term env t2)
+        v2
+       )]
+     [(_) ((d:eval-exp-impl) env term)]))
+|#
+     'todo)
+
+;; Use this dynamic parameter in d:eval-term for improved testing (see Lecture 31)
+(define d:eval-exp-impl (make-parameter d:eval-exp))
+;; Use this dynamic parameter in d:eval-exp for improved testing (see Lecture 31)
+(define d:eval-term-impl (make-parameter d:eval-term))
+
+;; Parameter body *must* be a curried term already
+(define/contract (break-lambda args body)
+  (-> (listof d:variable?) d:term? d:lambda?)
+  'todo)
+
+;; ef is a curried expression and args is a list of curried expressions
+(define/contract (break-apply ef args)
+  (-> d:expression? (listof d:expression?) d:expression?)
+  'todo)
+
+;; Use this dynamic parameter in d:curry for improved testing (see Lecture 31)
+(define break-lambda-impl (make-parameter break-lambda))
+;; Use this dynamic parameter in d:curry for improved testing (see Lecture 31)
+(define break-apply-impl (make-parameter break-apply))
+
+(define/contract (d:curry term)
+  (-> d:term? d:term?)
+  'todo)
