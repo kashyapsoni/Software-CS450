@@ -1,0 +1,44 @@
+#lang racket
+;; Please, do not remove this line and do not change the function names,
+;; otherwise the grader will not work and your submission will get 0 points.
+(provide (all-defined-out))
+
+(define ex1 'todo)
+(define ex2 'todo)
+(define ex3 'todo)
+
+;; Constructs a tree from two trees and a value
+(define (tree left value right) 'todo)
+;; Constructs a tree with a single node
+(define (tree-leaf value) 'todo)
+
+;; Accessors
+(define (tree-left self) 'todo)
+(define (tree-value self) 'todo)
+(define (tree-right self) 'todo)
+
+;; Copies the source and updates one of the fields
+(define (tree-set-value self value) 'todo)
+(define (tree-set-left self left) 'todo)
+(define (tree-set-right self right) 'todo)
+
+;; Function that inserts a value in a BST
+(define (bst-insert self value) 'todo)
+
+;; lambda
+(define (lambda? node) 'todo)
+(define (lambda-params node) 'todo)
+(define (lambda-body node) 'todo)
+
+;; apply
+(define (apply? l) 'todo)
+(define (apply-func node) 'todo)
+(define (apply-args node) 'todo)
+
+;; define
+(define (define? node) 'todo)
+(define (define-basic? node) 'todo)
+(define (define-func? node) 'todo)
+
+
+
